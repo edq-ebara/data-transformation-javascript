@@ -1,19 +1,32 @@
 {
-  "name": "vite-project",
+  "name": "jsonconvert",
+  "version": "0.1.0",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
-  },
-  "devDependencies": {
-    "typescript": "^5.0.2",
-    "vite": "^4.4.5"
+    "serve": "vue-cli-service serve",
+    "build": "vue-cli-service build",
+    "lint": "vue-cli-service lint"
   },
   "dependencies": {
+    "bin-code-editor": "^0.9.0",
+    "core-js": "^3.8.3",
+    "element-ui": "^2.15.14",
     "lodash": "^4.17.21",
-    "terser": "^5.19.3"
-  }
+    "node-sass": "^9.0.0",
+    "vue": "^2.6.14",
+    "vue-json-editor": "^1.4.3",
+    "vue-router": "^3.5.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.12.16",
+    "@vue/cli-plugin-babel": "~5.0.0",
+    "@vue/cli-service": "~5.0.0",
+    "sass-loader": "^14.1.1",
+    "vue-template-compiler": "^2.6.14"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ]
 }
