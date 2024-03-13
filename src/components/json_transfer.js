@@ -10,9 +10,26 @@ var JsonTranferUtil = /** @class */ (function () {
      */
     function JsonTranferUtil(orgTemplate, aimTemplate, jsonMappings) {
         this.Json_Path_Regex = "^[\\d\\w][\\d\\w\\_]*((\\[([\\w\\d\\_]+|\\*)\\])*|((\\.\\*)|(\\.[\\d\\w][\\d\\w\\_]*))*)*$";
+        if (!orgTemplate || !aimTemplate || !jsonMappings) {
+            throw new Error("源模板、目标模板、映射关系不能为空！");
+        }
         this.jOrg = { "root": orgTemplate };
         this.jAim = { "root": aimTemplate };
-        this.mappings = jsonMappings;
+        jsonMappings = jsonMappings.sort(function (a, b) {
+            if (a.OrgJsonPath != b.OrgJsonPath) {
+                return a.OrgJsonPath.localeCompare(b.OrgJsonPath);
+            }
+            else if (a.OrgJsonPath == b.OrgJsonPath) {
+                if (a.TranType == 1 || a.TranType == 3) {
+                    return -1;
+                }
+                if (b.TranType == 1 || b.TranType == 3) {
+                    return 1;
+                }
+                return a.TranType - b.TranType;
+            }
+        });
+        this.mappings = JSON.parse(JSON.stringify(jsonMappings));
     }
     /**********************私有方法  开始*************************** */
     /**
@@ -55,6 +72,85 @@ var JsonTranferUtil = /** @class */ (function () {
         }
     };
     /**
+         * 构建Mapping 初始化（仅仅只是简便类库使用者使用，自动为其补充映射）
+         * 处理数组任意子元素转对象任意或指定子元素|数组任意或指定子元素（只设置了源任意子元素到目标任意或指定子元素的映射，没有设置父元素的映射（TranType=4））
+         * 对象任意子元素转数组任意子元素（只设置了源任意子元素到目标任意子元素的映射），其它情况不考虑
+         */
+    JsonTranferUtil.prototype.buildJsonMapping_Init = function (mappings) {
+        var tempMappings = JSON.parse(JSON.stringify(mappings));
+        var _loop_1 = function (index) {
+            var mappingItem = tempMappings[index];
+            //源是数组情况：处理源是对象任意子元素，目标是对象任意或指定子元素|数组任意子元素或指定子元素
+            regexArr = '^[\\w|\\.|(\\[\\w\\])]+\\[\\*\\]\\.\\w*$';
+            matchsArr = mappingItem.OrgJsonPath.match(new RegExp(regexArr));
+            if (matchsArr && matchsArr.length > 0) {
+                mappingItemPathIndex = mappingItem.OrgJsonPath.indexOf("[*]");
+                mappingItemIndex = tempMappings.findIndex(function (m) { return m.OrgJsonPath == mappingItem.OrgJsonPath && m.AimJsonPath == mappingItem.AimJsonPath && m.TranType == mappingItem.TranType; });
+                orgPath = mappings[mappingItemIndex].OrgJsonPath.substring(0, mappingItemPathIndex);
+                orgPathTemp = mappingItem.OrgJsonPath.substring(0, mappingItemPathIndex);
+                // var orgPath = mappingItem.OrgJsonPath.substring(0, mappingItem.OrgJsonPath.indexOf("[*]"));
+                aimPath = mappingItem.AimJsonPath.substring(0, Math.max(mappingItem.AimJsonPath.lastIndexOf("[*]"), mappingItem.AimJsonPath.lastIndexOf(".")));
+                //生成mappings的新元素
+                mapping = {
+                    "AimJsonPath": aimPath,
+                    "OrgJsonPath": orgPath,
+                    "TranType": 4
+                };
+                //生成tempMappings的新元素
+                mapping_Temp = {
+                    "AimJsonPath": aimPath,
+                    "OrgJsonPath": orgPathTemp,
+                    "TranType": 4
+                };
+                hasMapping = mappings.find(function (m) { return m.AimJsonPath == mapping.AimJsonPath && m.TranType == 4; }) != null;
+                if (!hasMapping) {
+                    mappings.splice(index, 0, mapping);
+                    tempMappings.splice(index, 0, mapping_Temp);
+                }
+                tempMappings.forEach(function (mappingItemCur) {
+                    mappingItemCur.OrgJsonPath = mappingItemCur.OrgJsonPath.replace("".concat(mapping_Temp, "[*]"), "".concat(mapping_Temp, "[0]"));
+                });
+            }
+            //源是对象情况：只处理源是对象任意子元素且目标是数组任意子元素
+            regexObj = '^[\\w|\\.|(\\[\\w\\])]+\\.\\*$';
+            matchsObj = mappingItem.OrgJsonPath.match(new RegExp(regexObj));
+            matchsArr = mappingItem.AimJsonPath.match(new RegExp(regexArr));
+            if (matchsObj && matchsObj.length > 0 && matchsArr && matchsArr.length > 0) {
+                mappingItemPathIndex = mappingItem.OrgJsonPath.indexOf(".*");
+                mappingItemIndex = tempMappings.findIndex(function (m) { return m.OrgJsonPath == mappingItem.OrgJsonPath && m.AimJsonPath == mappingItem.AimJsonPath && m.TranType == mappingItem.TranType; });
+                orgPath = mappings[mappingItemIndex].OrgJsonPath.substring(0, mappingItemPathIndex);
+                orgPathTemp = mappingItem.OrgJsonPath.substring(0, mappingItemPathIndex);
+                aimPath = mappings[mappingItemIndex].AimJsonPath.substring(0, mappingItem.AimJsonPath.lastIndexOf("[*]"));
+                //生成mappings的新元素
+                mapping = {
+                    "AimJsonPath": aimPath,
+                    "OrgJsonPath": orgPath,
+                    "TranType": 4
+                };
+                //生成tempMappings的新元素
+                mapping_Temp = {
+                    "AimJsonPath": aimPath,
+                    "OrgJsonPath": orgPathTemp,
+                    "TranType": 4
+                };
+                hasMapping = mappings.find(function (m) { return m.AimJsonPath == mapping.AimJsonPath && m.TranType == 4; }) != null;
+                if (!hasMapping) {
+                    mappings.splice(index, 0, mapping);
+                    tempMappings.splice(index, 0, mapping_Temp);
+                }
+                tempMappings.forEach(function (mappingItemCur) {
+                    mappingItemCur.OrgJsonPath = mappingItemCur.OrgJsonPath.replace("".concat(orgPathTemp, ".*"), "".concat(orgPathTemp, ".a"));
+                    mappingItemCur.AimJsonPath = mappingItemCur.AimJsonPath.replace("".concat(aimPath, "[*]"), "".concat(aimPath, "[0]"));
+                });
+            }
+        };
+        var regexArr, matchsArr, mappingItemPathIndex, mappingItemIndex, orgPath, orgPathTemp, aimPath, mapping, mapping_Temp, hasMapping, regexObj, matchsObj, mappingItemPathIndex, mappingItemIndex, orgPath, orgPathTemp, aimPath, mapping, mapping_Temp, hasMapping;
+        for (var index = 0; index < tempMappings.length; index++) {
+            _loop_1(index);
+        }
+    };
+    ;
+    /**
      * 构建Mapping
      */
     JsonTranferUtil.prototype.buildJsonMapping = function (jOrg, jAim, jAimCurPath, jAimCur, mappings) {
@@ -86,6 +182,7 @@ var JsonTranferUtil = /** @class */ (function () {
                                             // jAimCur = [];//改变了jAimCur的引用
                                             jAimCur.splice(0, jAimCur.length);
                                             for (var j = 0; j < jOrgCur.length; j++) {
+                                                jAim_CurChild = JSON.parse(JSON.stringify(jAim_CurChild));
                                                 jAimCur.push(jAim_CurChild);
                                             }
                                             mappings.splice(mappings.indexOf(mappingItem), 1);
@@ -111,6 +208,7 @@ var JsonTranferUtil = /** @class */ (function () {
                                                 var jAim_CurChild = JSON.parse(JSON.stringify(jAimCur[0]));
                                                 jAimCur.splice(0, jAimCur.length);
                                                 for (var j = 0; j < jOrgCur.length; j++) {
+                                                    jAim_CurChild = JSON.parse(JSON.stringify(jAim_CurChild));
                                                     jAimCur.push(jAim_CurChild);
                                                 }
                                             }
@@ -149,6 +247,7 @@ var JsonTranferUtil = /** @class */ (function () {
                                                         TranType: childMapping.TranType
                                                     });
                                                 });
+                                                jAim_CurChild = JSON.parse(JSON.stringify(jAim_CurChild));
                                                 jAimCur.push(jAim_CurChild);
                                             }
                                         }
@@ -266,7 +365,7 @@ var JsonTranferUtil = /** @class */ (function () {
                                             for (var orgChildKey_1 in jOrgCur) {
                                                 orgChildKeyList.push(orgChildKey_1);
                                             }
-                                            var _loop_1 = function (aimChildKey) {
+                                            var _loop_2 = function (aimChildKey) {
                                                 if (orgChildKeyList.find(function (k) { return k == aimChildKey; })) {
                                                     orgChildKey = aimChildKey;
                                                     mappings.push({
@@ -279,7 +378,7 @@ var JsonTranferUtil = /** @class */ (function () {
                                             var orgChildKey;
                                             //轮询所有目标对象的所有属性构建与源对象同属性名的映射
                                             for (var aimChildKey in jAimCur) {
-                                                _loop_1(aimChildKey);
+                                                _loop_2(aimChildKey);
                                             }
                                         }
                                     }
@@ -450,6 +549,30 @@ var JsonTranferUtil = /** @class */ (function () {
         }
     };
     ;
+    /**
+     * 压缩JSON
+     * @param obj
+     * @param currentPath
+     * @param paths
+     * @returns
+     */
+    JsonTranferUtil.prototype.compressJson = function (obj, currentPath, paths) {
+        var _this = this;
+        if (typeof obj !== 'object' || obj === null) {
+            return obj;
+        }
+        if (Array.isArray(obj)) {
+            return obj.map(function (item, index) { return _this.compressJson(item, "".concat(currentPath, "[").concat(index, "]"), paths); });
+        }
+        var compressedData = {};
+        Object.keys(obj).forEach(function (key) {
+            var newPath = currentPath ? "".concat(currentPath, ".").concat(key) : key;
+            if (paths.find(function (p) { return p.indexOf(newPath) >= 0; })) {
+                compressedData[key] = _this.compressJson(obj[key], newPath, paths);
+            }
+        });
+        return compressedData;
+    };
     /**********************私有方法 结束*************************** */
     /**
       * Json数据转换
@@ -459,6 +582,10 @@ var JsonTranferUtil = /** @class */ (function () {
         console.log(JSON.parse(JSON.stringify(this.mappings)), 1001);
         console.log("*************************构建前的Aims*********************************");
         console.log(JSON.parse(JSON.stringify(this.jAim)), 1002);
+        //进行初步构造位数组转*的情况，添加父级节点的映射（TranType=4）
+        this.buildJsonMapping_Init(this.mappings);
+        console.log("*************************初始化后的Mappings*********************************");
+        console.log(JSON.parse(JSON.stringify(this.mappings)), 1003);
         this.buildJsonMapping(this.jOrg, this.jAim, "", this.jAim, this.mappings);
         console.log("*************************构建后的Mappings*********************************");
         console.log(JSON.parse(JSON.stringify(this.mappings)), 1003);
@@ -482,69 +609,92 @@ var JsonTranferUtil = /** @class */ (function () {
      */
     JsonTranferUtil.prototype.checkJsonMapping = function () {
         var _this = this;
-        var resultMsg = "";
+        var checkResults = [];
+        checkResults = [];
         this.mappings.forEach(function (jsonMapping) {
+            var resultAimMsg = "";
+            var resultOrgMsg = "";
+            var checkResult = { mapping: jsonMapping, AimMsg: "", OrgMsg: "" };
+            /***************************验证路径有效性*************************** */
             var regex = new RegExp(_this.Json_Path_Regex);
             var result = regex.test(jsonMapping.OrgJsonPath);
             if (!result) {
-                resultMsg = "".concat(resultMsg, "\u3010").concat(jsonMapping.OrgJsonPath, "\u3011Json\u8DEF\u5F84\u9A8C\u8BC1\u5931\u8D25\uFF01");
+                resultOrgMsg = "".concat(resultOrgMsg, "\u3010").concat(jsonMapping.OrgJsonPath, "\u3011Json\u8DEF\u5F84\u9A8C\u8BC1\u5931\u8D25\uFF01");
             }
             result = regex.test(jsonMapping.AimJsonPath);
             if (!result) {
-                resultMsg = "".concat(resultMsg, "\u3010").concat(jsonMapping.AimJsonPath, "\u3011Json\u8DEF\u5F84\u9A8C\u8BC1\u5931\u8D25\uFF01");
+                resultAimMsg = "".concat(resultAimMsg, "\u3010").concat(jsonMapping.AimJsonPath, "\u3011Json\u8DEF\u5F84\u9A8C\u8BC1\u5931\u8D25\uFF01");
             }
+            /***************************验证路径是否定位到属性*************************** */
+            //验证源路径
+            var orgJsonPath = jsonMapping.OrgJsonPath.replaceAll("[*]", "[0]");
+            while (orgJsonPath.indexOf(".*") >= 0) {
+                var tempOrgJsonPath = orgJsonPath.substring(0, orgJsonPath.indexOf(".*"));
+                if (tempOrgJsonPath != null && orgJsonPath != "") {
+                    var jsonMember_1 = lodash.get(_this.jOrg, tempOrgJsonPath);
+                    if (jsonMember_1 == null) {
+                        resultOrgMsg = "".concat(resultOrgMsg, "\u3010").concat(jsonMapping.OrgJsonPath, "\u3011Json\u8DEF\u5F84\u65E0\u6CD5\u5B9A\u4F4D\u5230json\u5C5E\u6027\uFF01");
+                    }
+                    if (Object.keys(jsonMember_1).length <= 0) {
+                        resultOrgMsg = "".concat(resultOrgMsg, "\u3010").concat(jsonMapping.OrgJsonPath, "\u3011Json\u8DEF\u5F84\u6CA1\u6709\u5B50\u5C5E\u6027\uFF01");
+                    }
+                    orgJsonPath = orgJsonPath.replace(tempOrgJsonPath + ".*", tempOrgJsonPath + "." + Object.keys(jsonMember_1)[0]);
+                }
+            }
+            var jsonMember = lodash.get(_this.jOrg, orgJsonPath);
+            if (jsonMember == null) {
+                resultOrgMsg = "".concat(resultOrgMsg, "\u3010").concat(jsonMapping.OrgJsonPath, "\u3011Json\u8DEF\u5F84\u65E0\u6CD5\u5B9A\u4F4D\u5230json\u5C5E\u6027\uFF01");
+            }
+            //验证目标路径
+            var aimJsonPath = jsonMapping.AimJsonPath.replaceAll("[*]", "[0]");
+            while (aimJsonPath.indexOf(".*") >= 0) {
+                var tempAimJsonPath = aimJsonPath.substring(0, aimJsonPath.indexOf(".*"));
+                if (tempAimJsonPath != null && aimJsonPath != "") {
+                    var jsonMemberAim_1 = lodash.get(_this.jAim, tempAimJsonPath);
+                    if (jsonMemberAim_1 == null) {
+                        resultAimMsg = "".concat(resultAimMsg, "\u3010").concat(jsonMapping.AimJsonPath, "\u3011Json\u8DEF\u5F84\u65E0\u6CD5\u5B9A\u4F4D\u5230json\u5C5E\u6027\uFF01");
+                    }
+                    if (Object.keys(jsonMemberAim_1).length <= 0) {
+                        resultAimMsg = "".concat(resultAimMsg, "\u3010").concat(jsonMapping.AimJsonPath, "\u3011Json\u8DEF\u5F84\u6CA1\u6709\u5B50\u5C5E\u6027\uFF01");
+                    }
+                    aimJsonPath = aimJsonPath.replace(tempAimJsonPath + ".*", tempAimJsonPath + "." + Object.keys(jsonMemberAim_1)[0]);
+                }
+            }
+            var jsonMemberAim = lodash.get(_this.jAim, aimJsonPath);
+            if (jsonMemberAim == null) {
+                resultAimMsg = "".concat(resultAimMsg, "\u3010").concat(jsonMapping.AimJsonPath, "\u3011Json\u8DEF\u5F84\u65E0\u6CD5\u5B9A\u4F4D\u5230json\u5C5E\u6027\uFF01");
+            }
+            checkResult.OrgMsg = resultOrgMsg;
+            checkResult.AimMsg = resultAimMsg;
+            checkResults.push(checkResult);
         });
-        if (resultMsg != null && resultMsg != "") {
-            return { IsSuccess: false, Msg: resultMsg };
-        }
-        else {
-            this.mappings.forEach(function (jsonMapping) {
-                //验证源路径
-                var orgJsonPath = jsonMapping.OrgJsonPath.replace("[*]", "[0]");
-                while (orgJsonPath.indexOf(".*") >= 0) {
-                    var tempOrgJsonPath = orgJsonPath.substring(0, orgJsonPath.indexOf(".*"));
-                    if (tempOrgJsonPath != null && orgJsonPath != "") {
-                        var jsonMember_1 = lodash.get(_this.jOrg, tempOrgJsonPath);
-                        if (jsonMember_1 == null) {
-                            resultMsg = "".concat(resultMsg, "\u3010").concat(jsonMapping.OrgJsonPath, "\u3011Json\u8DEF\u5F84\u65E0\u6CD5\u5B9A\u4F4D\u5230json\u5C5E\u6027\uFF01");
-                        }
-                        if (jsonMember_1.getChildren().size() <= 0) {
-                            resultMsg = "".concat(resultMsg, "\u3010").concat(jsonMapping.OrgJsonPath, "\u3011Json\u8DEF\u5F84\u6CA1\u6709\u5B50\u5C5E\u6027\uFF01");
-                        }
-                        orgJsonPath = orgJsonPath.replace(tempOrgJsonPath + ".*", tempOrgJsonPath + "." + jsonMember_1.getChildren().get(0).getName());
-                    }
-                }
-                var jsonMember = lodash.get(_this.jOrg, orgJsonPath);
-                if (jsonMember == null) {
-                    resultMsg = "".concat(resultMsg, "\u3010").concat(jsonMapping.OrgJsonPath, "\u3011Json\u8DEF\u5F84\u65E0\u6CD5\u5B9A\u4F4D\u5230json\u5C5E\u6027\uFF01");
-                }
-                //验证目标路径
-                var aimJsonPath = jsonMapping.AimJsonPath.replace("[*]", "[0]");
-                while (aimJsonPath.indexOf(".*") >= 0) {
-                    var tempAimJsonPath = aimJsonPath.substring(0, aimJsonPath.indexOf(".*"));
-                    if (tempAimJsonPath != null && aimJsonPath != "") {
-                        var jsonMemberAim_1 = lodash.get(_this.jAim, tempAimJsonPath);
-                        if (jsonMemberAim_1 == null) {
-                            resultMsg = "".concat(resultMsg, "\u3010").concat(jsonMapping.AimJsonPath, "\u3011Json\u8DEF\u5F84\u65E0\u6CD5\u5B9A\u4F4D\u5230json\u5C5E\u6027\uFF01");
-                        }
-                        if (jsonMemberAim_1.getChildren().size() <= 0) {
-                            resultMsg = "".concat(resultMsg, "\u3010").concat(jsonMapping.AimJsonPath, "\u3011Json\u8DEF\u5F84\u6CA1\u6709\u5B50\u5C5E\u6027\uFF01");
-                        }
-                        aimJsonPath = aimJsonPath.replace(tempAimJsonPath + ".*", tempAimJsonPath + "." + jsonMemberAim_1.getChildren().get(0).getName());
-                    }
-                }
-                var jsonMemberAim = lodash.get(_this.jAim, aimJsonPath);
-                if (jsonMemberAim == null) {
-                    resultMsg = "".concat(resultMsg, "\u3010").concat(jsonMapping.AimJsonPath, "\u3011Json\u8DEF\u5F84\u65E0\u6CD5\u5B9A\u4F4D\u5230json\u5C5E\u6027\uFF01");
-                }
-            });
-        }
-        if (resultMsg) {
-            return { IsSuccess: false, Msg: resultMsg };
-        }
-        else {
-            return { IsSuccess: true, Msg: "" };
-        }
+        return checkResults;
+    };
+    /**
+     * 获取压缩后的源Json信息
+     *
+     * @return
+     */
+    JsonTranferUtil.prototype.getSimpleOrgJson = function () {
+        var tempOrgTemplate = JSON.parse(JSON.stringify(this.jOrg));
+        var tempAimTemplate = JSON.parse(JSON.stringify(this.jAim));
+        var tempMappings = JSON.parse(JSON.stringify(this.mappings));
+        //进行初步构造位数组转*的情况，添加父级节点的映射（TranType=4）
+        this.buildJsonMapping_Init(tempMappings);
+        this.buildJsonMapping(tempOrgTemplate, tempAimTemplate, "", tempAimTemplate, tempMappings);
+        var tempOrgMappings = tempMappings.map(function (item) {
+            return item.OrgJsonPath;
+        });
+        // console.log("*************************压缩前的源JSON*********************************")
+        // console.log(JSON.parse(JSON.stringify(tempOrgTemplate)), 1002)
+        // console.log("*************************压缩前的源JSON Mapping*********************************")
+        // console.log(JSON.parse(JSON.stringify(tempOrgMappings)), 1003)
+        // console.log("*************************压缩前的目标JSON*********************************")
+        // console.log(JSON.parse(JSON.stringify(tempAimTemplate)), 1004)
+        // console.log("*************************压缩前的目标JSON Mapping*********************************")
+        // console.log(JSON.parse(JSON.stringify(tempAimMappings)), 1005)
+        var compressJson = this.compressJson(tempOrgTemplate.root, 'root', tempOrgMappings);
+        return compressJson;
     };
     return JsonTranferUtil;
 }());
