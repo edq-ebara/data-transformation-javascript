@@ -1,9 +1,12 @@
 
-import { buildJsonMapping, transJson } from './json_transfer_min'
+import JsonTranferUtil from './json_transfer'
 
 
 
 /************************数组转对象   示例数据 ********************** */
+
+
+
 
 
 /// 转换类型
@@ -13,114 +16,149 @@ import { buildJsonMapping, transJson } from './json_transfer_min'
 /// 4：源Value->目标Value
 const mappings = [
   {
-    "AimJsonPath": "dev_aim",
-    "OrgJsonPath": "dev_org",
-    "TranType": 4
+    "AimJsonPath": "root.dev",
+    "OrgJsonPath": "root.dev",
+    "TranType": 4,
+    "Options": {
+      "KeyInitIndex": 100,
+      "AddElementsOption": 2,
+      "TranOP": 2,
+      "TranWay": 1
+    }
   },
   {
-    "AimJsonPath": "dev_aim[*].value_aim",
-    "OrgJsonPath": "dev_org[*].value_org",
-    "TranType": 1
+    "AimJsonPath": "root.dev[*].id",
+    "OrgJsonPath": "root.dev.*",
+    "TranType": 2,
+    "Options": {
+      "KeyInitIndex": 100,
+      "AddElementsOption": 1,
+      "TranOP": 1,
+      "TranWay": 2
+    }
   },
   {
-    "AimJsonPath": "dev_aim[*].value_aim",
-    "OrgJsonPath": "dev_org[*].value_org",
-    "TranType": 4
+    "AimJsonPath": "root.dev[*].pro",
+    "OrgJsonPath": "root.dev.*",
+    "TranType": 4,
+    "Options": {
+      "KeyInitIndex": 100,
+      "AddElementsOption": 1,
+      "TranOP": 1,
+      "TranWay": 1
+    }
   },
   {
-    "AimJsonPath": "dev_aim[*].value_aim.key",
-    "OrgJsonPath": "dev_org[*].value_org.key",
-    "TranType": 3
+    "AimJsonPath": "root.dev[*].pro",
+    "OrgJsonPath": "root.dev.*",
+    "TranType": 4,
+    "Options": {
+      "KeyInitIndex": 100,
+      "AddElementsOption": 1,
+      "TranOP": 2,
+      "TranWay": 2
+    }
   },
   {
-    "AimJsonPath": "dev_aim[*].value_aim.key",
-    "OrgJsonPath": "dev_org[*].value_org.key",
-    "TranType": 4
+    "AimJsonPath": "root.dev[*].pro[*].n",
+    "OrgJsonPath": "root.dev.*.*",
+    "TranType": 2,
+    "Options": {
+      "KeyInitIndex": 100,
+      "AddElementsOption": 1,
+      "TranOP": 1,
+      "TranWay": 2
+    }
   },
-
   {
-    "AimJsonPath": "time_aim",
-    "OrgJsonPath": "time_org",
-    "TranType": 1
+    "AimJsonPath": "root.dev[*].pro[*].v",
+    "OrgJsonPath": "root.dev.*.*",
+    "TranType": 4,
+    "Options": {
+      "KeyInitIndex": 100,
+      "AddElementsOption": 1,
+      "TranOP": 1,
+      "TranWay": 2
+    }
   },
   {
-    "AimJsonPath": "time_aim",
-    "OrgJsonPath": "time_org",
+    "AimJsonPath": "root.dev[*].et",
+    "OrgJsonPath": "#Time#",
     "TranType": 4
   },
 ];
 
+
 const jsonOrg = {
-  "dev_org": [{
-    "value_org": {
-      "key": "111_org",
-      "value": "122_org",
+  "dev": {
+    "642fccd1": {
+      "1": "111",
+      "2": "122",
+    },
+    "642fccd2": {
+      "1": "211",
+      "2": "222",
+    },
+    "642fccd3": {
+      "1": "311",
+      "2": "322",
+    },
+    "642fccd4": {
+      "1": "411",
+      "2": "422",
     }
   },
-  {
-    "value_org": {
-      "key": "211_org",
-      "value": "222_org",
-    }
-  }
-  ],
-  "time_org": 1682471111
-};
+  "time": 1682476529
+}
+  ;
 
 const jsonAim = {
-  "dev_aim": [{
-    "value_aim": {
-      "key": "111_aim",
-      "value": "122_aim",
-      "other":"444"
-    }
-  }
-  ],
-  "time_aim": 1682472222
-};
-
+  "dev": [{
+    "id": "0001",
+    "pro": [{
+      "id": "",
+      "n": "11",
+      "dt": "",
+      "v": "1.1",
+      "q": ""
+    }],
+    "et": "22222222"
+  },{
+    "id": "0001",
+    "pro": [{
+      "id": "",
+      "n": "11",
+      "dt": "",
+      "v": "1.1",
+      "q": ""
+    }],
+    "et": "22222222"
+  },{
+    "id": "0001",
+    "pro": [{
+      "id": "",
+      "n": "11",
+      "dt": "",
+      "v": "1.1",
+      "q": ""
+    }],
+    "et": "22222222"
+  }]
+}
+  ;
 
 
 
 /*******************数组转对象    测试程序***************** */
 
 
-console.log("*************************构建前的Mappings*********************************")
 
-console.log(JSON.parse(JSON.stringify(mappings)), 1001)
+let jsonTranferUtil = new JsonTranferUtil(jsonOrg, jsonAim, mappings);
 
-console.log("*************************构建前的Aims*********************************")
-
-console.log(JSON.parse(JSON.stringify(jsonAim)), 1002)
-
-buildJsonMapping(jsonOrg, jsonAim, "", jsonAim, mappings);
+let result = jsonTranferUtil.tranJson();
 
 
-console.log("*************************构建后的Mappings*********************************")
+console.log("*************************最终转换结果*********************************")
 
-console.log(JSON.parse(JSON.stringify(mappings)), 1003)
-
-console.log("*************************构建后的Aims*********************************")
-
-console.log(JSON.parse(JSON.stringify(jsonAim)), 1004)
-
-
-
-let jsonOrgNew = JSON.parse(JSON.stringify(jsonOrg));
-let jsonAimNew = JSON.parse(JSON.stringify(jsonAim));
-let mappingsNew = JSON.parse(JSON.stringify(mappings));
-
-
-transJson(jsonOrgNew, jsonAimNew, "", jsonAimNew, mappingsNew)
-
-
-console.log("*************************转换后的Mappings*********************************")
-
-console.log(JSON.parse(JSON.stringify(mappingsNew)), 1005)
-
-console.log("*************************转换后的Aims*********************************")
-
-console.log(JSON.parse(JSON.stringify(jsonAimNew)), 1006)
-
-
+console.log(result, 9999999999999)
 
