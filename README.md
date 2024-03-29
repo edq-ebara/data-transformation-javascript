@@ -1,24 +1,68 @@
-# jsonconvert
+# JsonTranfer-JS
 
-## Project setup
-```
-npm install
-```
+#### 介绍
+JSON结构转换指的是将一个JSON对象或JSON数组按照一定规则进行重组、筛选、映射或转换，生成新的JSON对象或数组的过程。这种转换可以包括改变JSON数据的结构、提取特定字段、合并多个JSON数据，或者对数据进行计算和处理等操作。
 
-### Compiles and hot-reloads for development
-```
-npm run serve
-```
+**在JSON结构转换中，常见的操作包括：**
+- 提取字段：从一个JSON对象中提取特定字段，生成新的JSON对象。
+- 过滤数据：根据条件过滤JSON数据，生成符合条件的新JSON对象或数组。
+- 映射转换：将一个JSON对象中的字段映射到另一个字段，生成新的JSON对象。
+- 合并数据：将多个JSON对象或数组合并成一个新的JSON对象或数组。
 
-### Compiles and minifies for production
-```
-npm run build
-```
+JSON结构转换通常在数据处理、数据清洗、数据分析等场景中广泛应用。通过结构转换，可以根据需求定制化地处理JSON数据，使其符合特定的业务逻辑或数据格式要求。
+为此我们提供了一个简单开源的JS类库，接下来我们对此类库进行详细讲解。
 
-### Lints and fixes files
-```
-npm run lint
-```
+#### 术语/定义解释
 
-### Customize configuration
-See [Configuration Reference](https://cli.vuejs.org/config/).
+1. 变量
+   - #Time#  自动生成当前UTC时间
+   - #Time_L# 自动生成当前UTC时间的时间戳
+  
+2. 映射关系（Mapping）
+
+   - 结构
+   {
+    "AimJsonPath": "root.dev.642fccd1",//目标结构路径
+    "OrgJsonPath": "root.dev[*].pro",//源结构路径
+    "TranType": 4,//转换类型  1：源Key->目标Key  2：源Key->目标Value  3：源Value->目标Key 4：源Value->目标Value   
+    "Options":{
+        "KeyInitIndex":100,//自动生成的元素的起始索引,默认为0
+        "AddElementsOption":"1",  //1:追加新元素到数组/对象 2：替换数组/对象的原有属性  默认为1
+        "TranOP":"1",  //1:将源子元素复制到目标,使用源子元素的Key 2:将源子元素复制到目标,为源子元素新生成Key 3：依据源元素在目标构建同等数量的目标子元素 默认为1
+        "TranWay":"1", //1：交叉映射 2：一对一映射 默认为1       
+    }
+   }
+
+#### 目录介绍
+
+src
+--test //主要用于测试案例，里面分别存放着 对象到对象、数组到数组、对象到数组、数组到对象的转换案例
+	--main-对象转对象.ts 提供了对象转对象的案例
+  --main-对象转数组.ts 提供了对象转数组的案例
+  --main-数组转对象.ts 提供了数组转对象的案例
+  --main-数组转数组.ts 提供了数组转数组的案例
+--json_transfer.ts Json转换的核心脚本
+--main.ts 当前程序启动脚本，可从main-*****.ts中复制相应内容运行不同案例
+
+
+#### 安装教程
+
+1.  npm install
+2.  npm run dev
+
+#### 在线使用工具
+
+http://js.yu-con.com/#/
+
+#### 使用说明
+
+1. 中文使用说明详见CSDN（https://blog.csdn.net/weixin_41728451/category_12619274.html）
+
+
+
+#### 技术QQ群
+
+1.  775932762
+
+
+

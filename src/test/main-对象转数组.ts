@@ -1,5 +1,5 @@
 
-import JsonTranferUtil from './json_transfer'
+import JsonTranferUtil from '../json_transfer'
 
 
 
